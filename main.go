@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -11,11 +12,19 @@ import (
 
 var log = logger.Get()
 
+func getKey(id string) ([]byte, error) {
+	fmt.Println("getKey called!", id)
+	return []byte("123451"), nil
+}
+
 func main() {
 	config, err := broker.ConfigureConfig(os.Args[1:])
 	if err != nil {
 		log.Fatal("configure broker config error", zap.Error(err))
 	}
+
+	config.TlsInfo.PSK = true
+	config.TlsInfo.PSKGetKey = getKey
 
 	b, err := broker.NewBroker(config)
 	if err != nil {
