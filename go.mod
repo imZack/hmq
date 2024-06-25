@@ -1,4 +1,4 @@
-module github.com/fhmq/hmq
+module github.com/imzack/hmq
 
 go 1.21
 
