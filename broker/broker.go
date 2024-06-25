@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"crypto/tls"
 	encJson "encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"github.com/fhmq/hmq/plugins/auth"
 	"github.com/fhmq/hmq/plugins/bridge"
 	"github.com/fhmq/hmq/pool"
+	"github.com/raff/tls-ext"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 	"go.uber.org/zap"
@@ -388,6 +388,20 @@ func (b *Broker) DisConnClientByClientId(clientId string) {
 }
 
 func (b *Broker) handleConnection(typ int, conn net.Conn) error {
+	// Perform a type assertion to get the underlying TLS connection
+	tlsConn, ok := conn.(*tls.Conn)
+	if !ok {
+		log.Error("not a TLS connection")
+		return nil
+	} else {
+		// Perform the TLS handshake
+		err := tlsConn.Handshake()
+		if err != nil {
+			log.Error("TLS handshake failed: %s", zap.Error(err))
+			return err
+		}
+	}
+
 	//process connect packet
 	packet, err := packets.ReadPacket(conn)
 	if err != nil {

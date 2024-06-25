@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"flag"
@@ -13,6 +12,8 @@ import (
 	"github.com/fhmq/hmq/plugins/auth"
 	"github.com/fhmq/hmq/plugins/bridge"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/raff/tls-ext"
+	psk "github.com/raff/tls-psk"
 	"go.uber.org/zap"
 )
 
@@ -53,10 +54,12 @@ type RouteInfo struct {
 }
 
 type TLSInfo struct {
-	Verify   bool   `json:"verify"`
-	CaFile   string `json:"caFile"`
-	CertFile string `json:"certFile"`
-	KeyFile  string `json:"keyFile"`
+	Verify    bool   `json:"verify"`
+	CaFile    string `json:"caFile"`
+	CertFile  string `json:"certFile"`
+	KeyFile   string `json:"keyFile"`
+	PSK       bool   `json:"PSK"`
+	PSKGetKey func(id string) ([]byte, error)
 }
 
 var DefaultConfig *Config = &Config{
@@ -228,8 +231,29 @@ func NewTLSConfig(tlsInfo TLSInfo) (*tls.Config, error) {
 		MinVersion:   tls.VersionTLS12,
 	}
 
+	if tlsInfo.PSK {
+		config.MaxVersion = tls.VersionTLS12
+		config.CipherSuites = []uint16{
+			psk.TLS_DHE_PSK_WITH_3DES_EDE_CBC_SHA,
+			psk.TLS_DHE_PSK_WITH_AES_128_CBC_SHA,
+			psk.TLS_DHE_PSK_WITH_AES_256_CBC_SHA,
+			psk.TLS_DHE_PSK_WITH_RC4_128_SHA,
+			psk.TLS_PSK_WITH_3DES_EDE_CBC_SHA,
+			psk.TLS_PSK_WITH_AES_128_CBC_SHA,
+			psk.TLS_PSK_WITH_AES_256_CBC_SHA,
+			psk.TLS_RSA_PSK_WITH_3DES_EDE_CBC_SHA,
+			psk.TLS_RSA_PSK_WITH_AES_128_CBC_SHA,
+			psk.TLS_RSA_PSK_WITH_AES_256_CBC_SHA,
+			psk.TLS_RSA_PSK_WITH_RC4_128_SHA,
+		}
+
+		config.Extra = psk.PSKConfig{
+			GetKey: tlsInfo.PSKGetKey,
+		}
+	}
+
 	// Require client certificates as needed
-	if tlsInfo.Verify {
+	if !tlsInfo.PSK && tlsInfo.Verify {
 		config.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 	// Add in CAs if applicable.
