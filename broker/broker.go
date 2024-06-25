@@ -391,8 +391,7 @@ func (b *Broker) handleConnection(typ int, conn net.Conn) error {
 	// Perform a type assertion to get the underlying TLS connection
 	tlsConn, ok := conn.(*tls.Conn)
 	if !ok {
-		log.Error("not a TLS connection")
-		return nil
+		log.Debug("not a TLS connection")
 	} else {
 		// Perform the TLS handshake
 		err := tlsConn.Handshake()
